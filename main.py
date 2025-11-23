@@ -116,7 +116,7 @@ class License:
 
 def main() -> None:
     License(Locations.RUSTAVI).get_data().send_webhook()
-    License(Locations.BATUMI).get_data().send_webhook()
+    License(Locations.GORI).get_data().send_webhook()
 
 
 if __name__ == "__main__":
