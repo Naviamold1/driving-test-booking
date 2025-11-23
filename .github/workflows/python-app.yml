@@ -22,4 +22,6 @@ jobs:
       run: uv sync --locked --all-extras --dev
     - name: Run the project
       run: uv run main.py
+      env:
+        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
       
