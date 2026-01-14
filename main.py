@@ -51,8 +51,8 @@ class License:
         )
 
     def get_data(self):
-        url = "https://api-my.sa.gov.ge/api/v1/DrivingLicensePracticalExams2/DrivingLicenseExamsDates2"
-        time_url = "https://api-my.sa.gov.ge/api/v1/DrivingLicensePracticalExams2/DrivingLicenseExamsDateFrames2"
+        url = "https://api-bookings.sa.gov.ge/api/v1/DrivingLicensePracticalExams2/DrivingLicenseExamsDates2"
+        time_url = "https://api-bookings.sa.gov.ge/api/v1/DrivingLicensePracticalExams2/DrivingLicenseExamsDateFrames2"
 
         querystring = {"CategoryCode": "4", "CenterId": self.center}
 
@@ -71,7 +71,6 @@ class License:
             querystring["ExamDate"] = datetime.strptime(
                 date["bookingDate"], "%d-%m-%Y"
             ).strftime("%Y-%m-%d")
-            print(querystring)
             time_res: list[dict[str, str]] = self.session.get(  # pyright: ignore[reportAny]
                 time_url, headers=headers, params=querystring
             ).json()
