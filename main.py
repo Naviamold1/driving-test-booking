@@ -1,12 +1,14 @@
-from requests.sessions import Session
 import enum
-import os
-import requests
-import typing as t
 import logging
-from discord_webhook import DiscordWebhook, DiscordEmbed
+import os
+import typing as t
 from datetime import datetime
+from json import JSONDecodeError
+
+import requests
+from discord_webhook import DiscordEmbed, DiscordWebhook
 from dotenv import load_dotenv
+from requests.sessions import Session
 
 load_dotenv()  # pyright: ignore[reportUnusedCallResult]
 
@@ -40,7 +42,10 @@ class Locations(enum.IntEnum):
 class License:
     def __init__(self, center: Locations) -> None:
         self.center: Locations = center
+
         self.dates: list[t.Never] | list[LocationInfo] = []  # pyright: ignore[reportRedeclaration]
+
+        # Requests Session Config
         self.session: Session = requests.Session()
         self.session.headers.update(
             {
@@ -51,8 +56,15 @@ class License:
         )
 
     def get_data(self):
-        url = "https://api-bookings.sa.gov.ge/api/v1/DrivingLicensePracticalExams2/DrivingLicenseExamsDates2"
-        time_url = "https://api-bookings.sa.gov.ge/api/v1/DrivingLicensePracticalExams2/DrivingLicenseExamsDateFrames2"
+        """
+        Gets data from  self.center
+
+        :params None
+        :returns Self
+        """
+
+        DATES_URL = "https://api-bookings.sa.gov.ge/api/v1/DrivingLicensePracticalExams2/DrivingLicenseExamsDates2"
+        TIMES_URL = "https://api-bookings.sa.gov.ge/api/v1/DrivingLicensePracticalExams2/DrivingLicenseExamsDateFrames2"
 
         querystring = {"CategoryCode": "4", "CenterId": self.center}
 
@@ -61,25 +73,31 @@ class License:
             "accept-language": "ka",
         }
 
-        response = self.session.get(url, headers=headers, params=querystring)
-        self.dates: list[t.Never] | list[LocationInfo] = response.json()
-        if self.dates == []:
-            logger.info(f"No available dates in {self.center.name}")
-            return self
+        response = self.session.get(DATES_URL, headers=headers, params=querystring)
+        try:
+            self.dates: list[t.Never] | list[LocationInfo] = response.json()
+            if self.dates == []:
+                logger.info(f"No available dates in {self.center.name}")
+                return self
 
-        for date in self.dates:
-            querystring["ExamDate"] = datetime.strptime(
-                date["bookingDate"], "%d-%m-%Y"
-            ).strftime("%Y-%m-%d")
-            time_res: list[dict[str, str]] = self.session.get(  # pyright: ignore[reportAny]
-                time_url, headers=headers, params=querystring
-            ).json()
-            date["examTimes"] = [i["timeFrameName"] for i in time_res]
-        logger.info(self.dates)
-
+            for date in self.dates:
+                querystring["ExamDate"] = datetime.strptime(
+                    date["bookingDate"], "%d-%m-%Y"
+                ).strftime("%Y-%m-%d")
+                time_res: list[dict[str, str]] = self.session.get(  # pyright: ignore[reportAny]
+                    TIMES_URL, headers=headers, params=querystring
+                ).json()
+                date["examTimes"] = [i["timeFrameName"] for i in time_res]
+            logger.info(self.dates)
+        except JSONDecodeError:
+            logger.error(f"API returned unkown response: `{response.text}`")
         return self
 
     def send_webhook(self) -> None:
+        """
+        Sends discord webhook via provided discord webhook url
+        """
+
         if self.dates == []:
             return
 
